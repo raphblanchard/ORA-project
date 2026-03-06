@@ -10,6 +10,7 @@ import {
 } from "react";
 import { Component, Vector, Component1, Component2, Component3, ComponentWeather } from "../imports/Frame1-2-247";
 import VrHud from "./components/VrHud";
+import VrHudAframe from "./components/VrHudAframe";
 
 const SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
 const TX_CHAR = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
@@ -34,7 +35,7 @@ export default function App() {
   const [btStatus, setBtStatus] = useState("BT: non connecte");
   const [sessionActive, setSessionActive] = useState(false);
   const [testSessionActive, setTestSessionActive] = useState(false);
-  const [isVrMode, setIsVrMode] = useState(false);
+  const [vrMode, setVrMode] = useState<"off" | "html" | "aframe">("off");
   const [bpm, setBpm] = useState<string>("0");
   const [tempAmb, setTempAmb] = useState<string>("--");
   const [tempObj, setTempObj] = useState<string>("--");
@@ -195,7 +196,7 @@ export default function App() {
   };
 
   const stopDisplaySession = () => {
-    setIsVrMode(false);
+    setVrMode("off");
     if (isTestPage) {
       setTestSessionActive(false);
       return;
@@ -204,7 +205,12 @@ export default function App() {
   };
 
   const startVrSession = () => {
-    setIsVrMode(true);
+    setVrMode("html");
+    startDisplaySession();
+  };
+
+  const startVrAframeSession = () => {
+    setVrMode("aframe");
     startDisplaySession();
   };
 
@@ -557,15 +563,26 @@ export default function App() {
 
         {(page === "infos" || page === "ascension" || page === "test") && (
           <div className="relative w-full h-[calc(100vh-88px)] max-w-[1920px]">
-            {isVrMode && activeSession ? (
-              <VrHud
-                altitude={altitudeDisplay}
-                bpm={bpmDisplay}
-                timeText={timeDisplay}
-                tempAmb={tempAmbDisplay}
-                tempObj={tempObjDisplay}
-                videoSrc={hudVideoSrc}
-              />
+            {vrMode !== "off" && activeSession ? (
+              vrMode === "aframe" ? (
+                <VrHudAframe
+                  altitude={altitudeDisplay}
+                  bpm={bpmDisplay}
+                  timeText={timeDisplay}
+                  tempAmb={tempAmbDisplay}
+                  tempObj={tempObjDisplay}
+                  videoSrc={hudVideoSrc}
+                />
+              ) : (
+                <VrHud
+                  altitude={altitudeDisplay}
+                  bpm={bpmDisplay}
+                  timeText={timeDisplay}
+                  tempAmb={tempAmbDisplay}
+                  tempObj={tempObjDisplay}
+                  videoSrc={hudVideoSrc}
+                />
+              )
             ) : (
               <div className="absolute inset-0 m-auto aspect-[1628/916] w-full h-auto max-h-full">
                 {activeSession && (
@@ -617,6 +634,12 @@ export default function App() {
                       className="px-8 py-4 rounded-xl border-2 border-cyan-400/90 bg-cyan-900/80 text-white text-2xl font-extrabold backdrop-blur-sm shadow-[0_0_15px_rgba(34,211,238,0.5)]"
                     >
                       Start VR 360
+                    </button>
+                    <button
+                      onClick={startVrAframeSession}
+                      className="px-8 py-4 rounded-xl border-2 border-emerald-400/90 bg-emerald-900/80 text-white text-2xl font-extrabold backdrop-blur-sm shadow-[0_0_15px_rgba(52,211,153,0.5)]"
+                    >
+                      Start VR A-Frame
                     </button>
                   </div>
                 )}
