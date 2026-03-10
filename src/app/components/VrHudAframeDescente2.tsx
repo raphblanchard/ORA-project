@@ -6,6 +6,13 @@ interface VrHudAframeDescente2Props {
 }
 
 const ASSET_BASE = "/media/hud-descente2";
+const HUD_RADIUS = 2.35;
+const HUD_DROP = -0.3;
+
+const toHudPosition = (yawDeg: number, y: number, radius = HUD_RADIUS) => {
+  const yawRad = (yawDeg * Math.PI) / 180;
+  return `${Math.sin(yawRad) * radius} ${y + HUD_DROP} ${-Math.cos(yawRad) * radius}`;
+};
 
 export default function VrHudAframeDescente2({ videoSrc }: VrHudAframeDescente2Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -95,12 +102,13 @@ export default function VrHudAframeDescente2({ videoSrc }: VrHudAframeDescente2P
         <a-videosphere src="#bg-video-af-descente2" rotation="0 -90 0" />
 
         <a-camera id="af-camera-descente2" position="0 1.6 0" look-controls="pointerLockEnabled: false">
-          <a-entity id="af-hud-descente2" position="0 0 -2.2">
+          <a-entity id="af-hud-descente2">
             <a-image
               id="af-d2-compass"
               src="#d2-compass"
               material="shader: flat; transparent: true; alphaTest: 0.02"
-              position="-1.27 0.76 0.02"
+              position={toHudPosition(-30, 0.42)}
+              rotation={`0 30 0`}
               width="0.40"
               height="0.40"
             />
@@ -109,7 +117,8 @@ export default function VrHudAframeDescente2({ videoSrc }: VrHudAframeDescente2P
               id="af-d2-clock"
               src="#d2-clock"
               material="shader: flat; transparent: true; alphaTest: 0.02"
-              position="1.23 0.84 0.02"
+              position={toHudPosition(30, 0.38)}
+              rotation={`0 -30 0`}
               width="0.60"
               height="0.17"
             />
@@ -118,7 +127,8 @@ export default function VrHudAframeDescente2({ videoSrc }: VrHudAframeDescente2P
               id="af-d2-altitude"
               src="#d2-altitude"
               material="shader: flat; transparent: true; alphaTest: 0.02"
-              position="-1.17 -0.83 0.02"
+              position={toHudPosition(-33, -0.58)}
+              rotation={`0 33 0`}
               width="0.84"
               height="0.24"
             />
@@ -127,7 +137,8 @@ export default function VrHudAframeDescente2({ videoSrc }: VrHudAframeDescente2P
               id="af-d2-speed"
               src="#d2-speed"
               material="shader: flat; transparent: true; alphaTest: 0.02"
-              position="0 -0.83 0.02"
+              position={toHudPosition(0, -0.65)}
+              rotation="0 0 0"
               width="0.81"
               height="0.26"
             />
@@ -136,7 +147,8 @@ export default function VrHudAframeDescente2({ videoSrc }: VrHudAframeDescente2P
               id="af-d2-bpm"
               src="#d2-bpm"
               material="shader: flat; transparent: true; alphaTest: 0.02"
-              position="1.20 -0.83 0.02"
+              position={toHudPosition(33, -0.58)}
+              rotation={`0 -33 0`}
               width="0.84"
               height="0.24"
             />
