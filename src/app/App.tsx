@@ -11,11 +11,12 @@ import {
 import { Component, Vector, Component1, Component2, Component3, ComponentWeather } from "../imports/Frame1-2-247";
 import VrHud from "./components/VrHud";
 import VrHudAframe from "./components/VrHudAframe";
+import VrHudAframeDescente2 from "./components/VrHudAframeDescente2";
 
 const SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
 const TX_CHAR = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
 
-type Page = "home" | "infos" | "ascension" | "test";
+type Page = "home" | "infos" | "descente2" | "ascension" | "test";
 
 const haversineMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
   const toRad = (v: number) => (v * Math.PI) / 180;
@@ -30,8 +31,8 @@ const haversineMeters = (lat1: number, lon1: number, lat2: number, lon2: number)
 };
 
 export default function App() {
-  const hudVideoSrc = "/media/hud-background.mp4";
   const [page, setPage] = useState<Page>("infos");
+  const hudVideoSrc = page === "descente2" ? "/media/hud-background 2.mp4" : "/media/hud-background.mp4";
   const [btStatus, setBtStatus] = useState("BT: non connecte");
   const [sessionActive, setSessionActive] = useState(false);
   const [testSessionActive, setTestSessionActive] = useState(false);
@@ -68,6 +69,7 @@ export default function App() {
   const holdIntervalRef = useRef<number | null>(null);
   const suppressNextClickRef = useRef(false);
   const isAscensionPage = page === "ascension";
+  const isDescente2Page = page === "descente2";
   const isTestPage = page === "test";
   const isWeatherPage = isAscensionPage || isTestPage;
   const activeSession = isTestPage ? testSessionActive : sessionActive;
@@ -538,6 +540,12 @@ export default function App() {
             Ascension
           </button>
           <button
+            onClick={() => setPage("descente2")}
+            className={`px-4 py-2 rounded-md border ${page === "descente2" ? "bg-slate-900 text-white" : "bg-white"}`}
+          >
+            Descente2
+          </button>
+          <button
             onClick={() => setPage("test")}
             className={`px-4 py-2 rounded-md border ${page === "test" ? "bg-slate-900 text-white" : "bg-white"}`}
           >
@@ -561,18 +569,22 @@ export default function App() {
           </div>
         )}
 
-        {(page === "infos" || page === "ascension" || page === "test") && (
+        {(page === "infos" || page === "ascension" || page === "descente2" || page === "test") && (
           <div className="relative w-full h-[calc(100vh-88px)] max-w-[1920px]">
             {vrMode !== "off" && activeSession ? (
               vrMode === "aframe" ? (
-                <VrHudAframe
-                  altitude={altitudeDisplay}
-                  bpm={bpmDisplay}
-                  timeText={timeDisplay}
-                  tempAmb={tempAmbDisplay}
-                  tempObj={tempObjDisplay}
-                  videoSrc={hudVideoSrc}
-                />
+                isDescente2Page ? (
+                  <VrHudAframeDescente2 videoSrc={hudVideoSrc} />
+                ) : (
+                  <VrHudAframe
+                    altitude={altitudeDisplay}
+                    bpm={bpmDisplay}
+                    timeText={timeDisplay}
+                    tempAmb={tempAmbDisplay}
+                    tempObj={tempObjDisplay}
+                    videoSrc={hudVideoSrc}
+                  />
+                )
               ) : (
                 <VrHud
                   altitude={altitudeDisplay}
@@ -585,6 +597,36 @@ export default function App() {
               )
             ) : (
               <div className="absolute inset-0 m-auto aspect-[1628/916] w-full h-auto max-h-full">
+                {isDescente2Page ? (
+                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-6 bg-black text-white">
+                    <div className="max-w-2xl rounded-2xl border border-white/15 bg-white/5 px-6 py-5 text-center backdrop-blur-sm">
+                      <h2 className="mb-2 text-2xl font-semibold">Descente2 A-Frame</h2>
+                      <p className="text-sm text-white/80">
+                        Cet onglet utilise des plans A-Frame attachés à la caméra pour que le HUD soit bien visible dans le casque Meta.
+                      </p>
+                      <p className="mt-2 text-xs text-white/60">
+                        Les assets du HUD Descente2 sont chargés depuis <code>/public/media/hud-descente2/</code> et rendus en A-Frame sur la caméra.
+                      </p>
+                    </div>
+                    {!activeSession && (
+                      <button
+                        onClick={startVrAframeSession}
+                        className="px-8 py-4 rounded-xl border-2 border-emerald-400/90 bg-emerald-900/80 text-white text-2xl font-extrabold backdrop-blur-sm shadow-[0_0_15px_rgba(52,211,153,0.5)]"
+                      >
+                        Start VR A-Frame
+                      </button>
+                    )}
+                    {activeSession && (
+                      <button
+                        onClick={stopDisplaySession}
+                        className="px-3 py-1.5 rounded-md border border-white/70 bg-black/35 text-white text-xs font-semibold"
+                      >
+                        Stop
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <>
                 {activeSession && (
                   <video
                     className="absolute inset-0 w-full h-full object-cover pointer-events-none"
@@ -786,6 +828,8 @@ export default function App() {
                         ▼
                       </button>
                     </div>
+                  </>
+                )}
                   </>
                 )}
               </div>
