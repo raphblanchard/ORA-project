@@ -35,6 +35,7 @@ export default function VrHudAframe({
     const videoRef = useRef<HTMLVideoElement>(null);
     const sceneRef = useRef<any>(null);
     const [isPlaying, setIsPlaying] = useState(false);
+    const [isVrMode, setIsVrMode] = useState(false);
     const [activeAlert, setActiveAlert] = useState<"none" | "breathing" | "return">("none");
     const [breathPhase, setBreathPhase] = useState<"inhale" | "exhale">("inhale");
     const [logoSrc, setLogoSrc] = useState("/media/hud/png-elements/hq/Logo vert.png");
@@ -170,6 +171,22 @@ export default function VrHudAframe({
         sceneEl.addEventListener("loaded", enterVr, { once: true });
         return () => {
             sceneEl.removeEventListener("loaded", enterVr);
+        };
+    }, []);
+
+    useEffect(() => {
+        const sceneEl = sceneRef.current;
+        if (!sceneEl) return;
+
+        const handleEnterVr = () => setIsVrMode(true);
+        const handleExitVr = () => setIsVrMode(false);
+
+        sceneEl.addEventListener("enter-vr", handleEnterVr);
+        sceneEl.addEventListener("exit-vr", handleExitVr);
+
+        return () => {
+            sceneEl.removeEventListener("enter-vr", handleEnterVr);
+            sceneEl.removeEventListener("exit-vr", handleExitVr);
         };
     }, []);
 
@@ -315,9 +332,17 @@ export default function VrHudAframe({
                     id="af-camera"
                     position="0 1.6 0"
                     look-controls="pointerLockEnabled: false"
-                    raycaster="objects: .af-clickable"
-                    cursor="rayOrigin: mouse"
+                    raycaster={!isVrMode ? "objects: .af-clickable" : undefined}
+                    cursor={!isVrMode ? "rayOrigin: mouse" : undefined}
                 >
+                    <a-entity
+                        id="af-right-controller"
+                        laser-controls="hand: right"
+                        raycaster="objects: .af-clickable"
+                        cursor="rayOrigin: entity"
+                        line="color: #6AD2CA; opacity: 0.9"
+                    />
+
                     {/* 
             HUD CONTENEUR
             Position: centré horizontalement, légèrement au-dessus du centre, 2.5m devant 
@@ -491,16 +516,16 @@ export default function VrHudAframe({
                         <a-entity
                             id="af-nav-button"
                             class="af-clickable"
-                            geometry="primitive: plane; width: 0.24; height: 0.24"
+                            geometry="primitive: plane; width: 0.34; height: 0.34"
                             material="color: #10242c; opacity: 0.38; shader: flat"
-                            position={isFirstReference ? "1.8 -1.0 0.02" : "-1.8 -1.0 0.02"}
+                            position="0 -0.98 0.02"
                         >
                             <a-text
                                 value={isFirstReference ? ">" : "<"}
                                 color="#d9f3f0"
                                 align="center"
                                 baseline="center"
-                                width="1.2"
+                                width="1.5"
                                 position="0 0 0.01"
                             />
                         </a-entity>

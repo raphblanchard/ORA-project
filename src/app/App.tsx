@@ -81,7 +81,6 @@ export default function App() {
       <div className="mx-auto flex min-h-screen max-w-[1920px] items-center justify-center p-4">
         <div className="relative h-[min(100vh-32px,916px)] w-full max-w-[1628px]">
           <VrHudAframe
-            key={page}
             alertType={preset.alertType}
             altitude={preset.altitude}
             bpm={preset.bpm}
