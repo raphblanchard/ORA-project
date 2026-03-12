@@ -72,6 +72,21 @@ export default function App() {
     return () => window.clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "ArrowRight") {
+        setPage("ascension");
+      }
+
+      if (event.key === "ArrowLeft") {
+        setPage("infos");
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   const toggleReference = () => {
     setPage((currentPage) => (currentPage === "ascension" ? "infos" : "ascension"));
   };

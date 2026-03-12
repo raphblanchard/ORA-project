@@ -39,11 +39,14 @@ export default function VrHudAframe({
     const [activeAlert, setActiveAlert] = useState<"none" | "breathing" | "return">("none");
     const [breathPhase, setBreathPhase] = useState<"inhale" | "exhale">("inhale");
     const [logoSrc, setLogoSrc] = useState("/media/hud/png-elements/hq/Logo vert.png");
+    const INITIAL_CAMERA_YAW = 270;
+    const BREATH_INHALE_MS = 4000;
+    const BREATH_EXHALE_MS = 6000;
+    const BREATH_CYCLE_MS = BREATH_INHALE_MS + BREATH_EXHALE_MS;
 
     /* ── couleur HUD ── */
     const COL = "#6AD2CA";
     const breathInstruction = breathPhase === "inhale" ? "Inspirez lentement" : "Expirez";
-    const breathScale = breathPhase === "inhale" ? "1.2 1.2 1" : "0.78 0.78 1";
 
     /* ── lecture vidéo ── */
     useEffect(() => {
@@ -200,21 +203,28 @@ export default function VrHudAframe({
             if (alertType === "breathing") {
                 setLogoSrc("/media/hud/png-elements/hq/Logo jaune.png");
                 setActiveAlert("breathing");
-                setBreathPhase("inhale");
+                const totalCycles = 5;
+                let completedCycles = 0;
 
-                let step = 0;
-                const totalSteps = 10;
-                breathingTimer = window.setInterval(() => {
-                    step += 1;
-                    if (step >= totalSteps) {
-                        if (breathingTimer !== null) {
-                            window.clearInterval(breathingTimer);
+                const runBreathingPhase = (phase: "inhale" | "exhale") => {
+                    setBreathPhase(phase);
+                    breathingTimer = window.setTimeout(() => {
+                        if (phase === "inhale") {
+                            runBreathingPhase("exhale");
+                            return;
                         }
-                        setActiveAlert("none");
-                        return;
-                    }
-                    setBreathPhase(step % 2 === 0 ? "inhale" : "exhale");
-                }, 2200);
+
+                        completedCycles += 1;
+                        if (completedCycles >= totalCycles) {
+                            setActiveAlert("none");
+                            return;
+                        }
+
+                        runBreathingPhase("inhale");
+                    }, phase === "inhale" ? BREATH_INHALE_MS : BREATH_EXHALE_MS);
+                };
+
+                runBreathingPhase("inhale");
             }
             else {
                 setLogoSrc("/media/hud/png-elements/hq/Logo rouge.png");
@@ -291,6 +301,34 @@ export default function VrHudAframe({
                 </div>
             )}
 
+            {!isVrMode && (
+                <button
+                    type="button"
+                    onClick={onToggleReference}
+                    style={{
+                        position: "absolute",
+                        left: "50%",
+                        bottom: "64px",
+                        zIndex: 1000,
+                        width: "56px",
+                        height: "56px",
+                        transform: "translateX(-50%)",
+                        borderRadius: "999px",
+                        border: "2px solid rgba(217,243,240,0.7)",
+                        background: "rgba(16,36,44,0.72)",
+                        color: "#d9f3f0",
+                        fontSize: "28px",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        boxShadow: "0 0 18px rgba(106,210,202,0.25)",
+                        backdropFilter: "blur(8px)",
+                    }}
+                    aria-label="Changer de situation"
+                >
+                    {isFirstReference ? ">" : "<"}
+                </button>
+            )}
+
             {/* ══════════════════════════════════════════════
           SCÈNE A-FRAME — Tout le HUD est en entités 3D
       ══════════════════════════════════════════════ */}
@@ -299,7 +337,7 @@ export default function VrHudAframe({
                 vr-mode-ui="enabled: true"
                 loading-screen="enabled: false"
                 device-orientation-permission-ui="enabled: false"
-                style={{ position: "absolute", inset: 0 }}
+                style={{ position: "absolute", inset: 0, zIndex: 1 }}
             >
                 {/* ── Assets ── */}
                 <a-assets>
@@ -336,18 +374,19 @@ export default function VrHudAframe({
                 />
 
                 {/* ── Caméra + HUD enfant ── */}
-                <a-camera
-                    id="af-camera"
-                    position="0 1.6 0"
-                    look-controls="pointerLockEnabled: false"
-                    raycaster={!isVrMode ? "objects: .af-clickable" : undefined}
-                    cursor={!isVrMode ? "rayOrigin: mouse" : undefined}
-                >
+                <a-entity id="af-camera-rig" rotation={`0 ${INITIAL_CAMERA_YAW} 0`}>
+                    <a-camera
+                        id="af-camera"
+                        position="0 1.6 0"
+                        look-controls="pointerLockEnabled: false"
+                        raycaster={!isVrMode ? "objects: .af-clickable" : undefined}
+                        cursor={!isVrMode ? "rayOrigin: mouse" : undefined}
+                    >
                     {/* 
             HUD CONTENEUR
             Position: centré horizontalement, légèrement au-dessus du centre, 2.5m devant 
           */}
-                    <a-entity id="af-hud" position="0 0.15 -2.5">
+                        <a-entity id="af-hud" position="0 0.15 -2.5">
 
                         {/* ══════ LOGO CENTRAL ══════ */}
                         <a-image
@@ -532,18 +571,38 @@ export default function VrHudAframe({
 
                         {activeAlert === "breathing" && (
                             <a-entity id="af-breathing-alert" position="0 -0.05 0.03">
-                                <a-ring
-                                    radius-inner="0.16"
-                                    radius-outer="0.21"
-                                    material="shader: flat; color: #F3D35B; opacity: 0.9"
-                                    scale={breathScale}
-                                    animation={`property: scale; to: ${breathScale}; dur: 1800; easing: easeInOutSine`}
-                                />
                                 <a-circle
                                     radius="0.27"
                                     material="shader: flat; color: #F3D35B; opacity: 0.08"
-                                    scale={breathScale}
-                                    animation={`property: scale; to: ${breathScale}; dur: 1800; easing: easeInOutSine`}
+                                />
+                                <a-ring
+                                    radius-inner="0.19"
+                                    radius-outer="0.205"
+                                    theta-start="-54"
+                                    theta-length="144"
+                                    material="shader: flat; color: #63D471; opacity: 0.95"
+                                />
+                                <a-ring
+                                    radius-inner="0.19"
+                                    radius-outer="0.205"
+                                    theta-start="90"
+                                    theta-length="216"
+                                    material="shader: flat; color: #5DADE2; opacity: 0.95"
+                                />
+                                <a-entity
+                                    animation={`property: rotation; from: 0 0 0; to: 0 0 -360; dur: ${BREATH_CYCLE_MS}; loop: true; easing: linear`}
+                                >
+                                    <a-box
+                                        width="0.012"
+                                        height="0.22"
+                                        depth="0.01"
+                                        position="0 0.11 0.01"
+                                        material="shader: flat; color: #FFF7DA; opacity: 0.95"
+                                    />
+                                </a-entity>
+                                <a-circle
+                                    radius="0.022"
+                                    material="shader: flat; color: #FFF7DA; opacity: 0.95"
                                 />
                                 <a-text
                                     value="Alerte respiration"
@@ -572,24 +631,18 @@ export default function VrHudAframe({
                                     position="0 0.1 0.02"
                                 />
                                 <a-text
-                                    value="Vous etes trop loin du domicile."
-                                    color="#FFF1F1"
-                                    align="center"
-                                    width="2.9"
-                                    position="0 -0.02 0.02"
-                                />
-                                <a-text
                                     value="Rentrez."
                                     color="#FFF1F1"
                                     align="center"
                                     width="2.4"
-                                    position="0 -0.13 0.02"
+                                    position="0 -0.02 0.02"
                                 />
                             </a-entity>
                         )}
 
-                    </a-entity>
-                </a-camera>
+                        </a-entity>
+                    </a-camera>
+                </a-entity>
             </a-scene>
         </div>
     );
