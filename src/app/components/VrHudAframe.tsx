@@ -385,9 +385,9 @@ export default function VrHudAframe({
                     >
                     {/*
             HUD CONTENEUR
-            Position: centré horizontalement, légèrement au-dessus du centre, 3.4m devant
+            Position: centré horizontalement, légèrement au-dessus du centre, 4.1m devant
           */}
-                        <a-entity id="af-hud" position="0 0.15 -3.4">
+                        <a-entity id="af-hud" position="0 0.15 -4.1">
 
                         {/* ══════ LOGO CENTRAL ══════ */}
                         <a-image
