@@ -16,11 +16,19 @@ export default function LandingPage() {
   });
 
   const landingOpacity = useTransform(scrollYProgress, [0, 0.1, 0.2], [1, 1, 0]);
-  const canvasOpacity = useTransform(scrollYProgress, [0, 0.1, 0.2], [0, 0, 1]);
-  const currentFrameIndex = useTransform(scrollYProgress, [0.2, 0.8], [1, numFrames]);
+  const canvasOpacity = useTransform(scrollYProgress, [0, 0.1, 0.2, 0.53, 0.62], [0, 0, 1, 1, 0.5]);
+  // Animation s'arrête à la frame 97 (scroll ≈ 0.53), clamped après
+  const currentFrameIndex = useTransform(scrollYProgress, [0.2, 0.53], [1, 97]);
   const landingPointer = useTransform(scrollYProgress, (pos) => (pos > 0.2 ? "none" : "auto"));
-  const buttonPointer = useTransform(scrollYProgress, (pos) => (pos > 0.8 ? "auto" : "none"));
-  const buttonOpacity = useTransform(scrollYProgress, [0.85, 0.95], [0, 1]);
+  const buttonPointer = useTransform(scrollYProgress, (pos) => (pos > 0.84 ? "auto" : "none"));
+  const buttonOpacity = useTransform(scrollYProgress, [0.84, 0.93], [0, 1]);
+
+  // Transition blur + noir démarre à la frame 97 (~scroll 0.53)
+const canvasBlur = useTransform(scrollYProgress, [0.53, 0.65], [0, 20]);
+  const canvasFilter = useTransform(canvasBlur, (blur) => `blur(${blur}px)`);
+  const darkOverlayOpacity = useTransform(scrollYProgress, [0.53, 0.62], [0, 1]);
+  // Casque apparaît une fois le fond blanc complet, stop zone 0.72→0.84
+  const casqueEclatOpacity = useTransform(scrollYProgress, [0.53, 0.72], [0, 1]);
 
   const [isHelmetHovered, setIsHelmetHovered] = useState(false);
   const [images, setImages] = useState<HTMLImageElement[]>([]);
@@ -86,11 +94,11 @@ export default function LandingPage() {
 
   return (
     <div
-      className="min-h-screen bg-[#fafafa] text-[#0f0f11] selection:bg-[#ff5a00]/20"
+      className="min-h-screen bg-[#fcfcfc] text-[#0f0f11] selection:bg-[#ff5a00]/20"
       style={{ fontFamily: bodyFont }}
     >
       {!allReady && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#fafafa]">
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#fcfcfc]">
           <div className="mb-4 h-1 w-64 overflow-hidden rounded-full bg-[#0f0f11]/10">
             <div
               className="h-full bg-[#ff5a00] transition-all duration-300 ease-out"
@@ -113,8 +121,8 @@ export default function LandingPage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 1.5, ease: "easeOut" }}
-              style={{ fontFamily: displayFont, fontSize: "42vw", lineHeight: 0.8 }}
-              className="absolute z-0 select-none font-black tracking-tighter text-[#0f0f11]/90"
+              style={{ fontFamily: displayFont, fontSize: "42vw", lineHeight: 0.8, color: "#ffffff", textShadow: "0 0 80px rgba(0,0,0,0.25), 0 0 200px rgba(0,0,0,0.15)" }}
+              className="absolute z-0 select-none font-black tracking-tighter"
             >
               ORA
             </motion.h1>
@@ -133,8 +141,8 @@ export default function LandingPage() {
                 scale: isHelmetHovered ? 1.05 : 1,
                 y: 0,
                 transition: {
-                  duration: isHelmetHovered ? 0.2 : 1.5,
-                  delay: isHelmetHovered ? 0 : 0.3,
+                  duration: isHelmetHovered ? 0.2 : 0.4,
+                  delay: isHelmetHovered ? 0 : 0,
                   ease: [0.16, 1, 0.3, 1],
                 },
               }}
@@ -142,31 +150,94 @@ export default function LandingPage() {
               alt="Casque ORA"
               className="absolute z-10 h-full w-full object-contain pointer-events-none"
             />
+
+            {/* Logos Decathlon × Simond */}
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1, delay: 0.8, ease: "easeOut" }}
+              className="absolute left-1/2 z-50 -translate-x-1/2 grid items-center"
+              style={{ top: "calc(50% - 22vw)", gridTemplateColumns: "1fr auto 1fr", width: "36vw" }}
+            >
+              <img src="/media/side elements/decath.svg" alt="Decathlon" className="h-5 w-auto justify-self-end" />
+              <span className="px-8 text-sm font-light" style={{ color: "#DD4543" }}>×</span>
+              <img src="/media/side elements/simond.svg" alt="Simond" className="h-5 w-auto justify-self-start" />
+            </motion.div>
+
+            {/* Scroll indicator */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 1, delay: 1.2 }}
+              className="absolute bottom-10 left-1/2 z-50 -translate-x-1/2 flex flex-col items-center gap-1"
+            >
+              {[0, 1].map((i) => (
+                <motion.svg
+                  key={i}
+                  width="20"
+                  height="12"
+                  viewBox="0 0 20 12"
+                  fill="none"
+                  animate={{ y: [0, 5, 0], opacity: [0.9, 0.3, 0.9] }}
+                  transition={{
+                    duration: 1.4,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: i * 0.2,
+                  }}
+                >
+                  <path
+                    d="M1 1L10 10L19 1"
+                    stroke="#E8321A"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </motion.svg>
+              ))}
+            </motion.div>
           </motion.div>
 
           <motion.canvas
-            style={{ opacity: canvasOpacity }}
+            style={{ opacity: canvasOpacity, filter: canvasFilter as any }}
             ref={canvasRef}
             width={1920}
             height={1080}
             className="absolute z-10 h-full w-full object-contain pointer-events-none"
           />
 
+          {/* Dark overlay */}
+          <motion.div
+            style={{ opacity: darkOverlayOpacity }}
+            className="absolute inset-0 z-20 bg-[#fcfcfc] pointer-events-none"
+          />
+
+          {/* Casque éclaté sans fond */}
+          <motion.img
+            style={{ opacity: casqueEclatOpacity }}
+            src="/media/side elements/casque-eclat-ssfond.png"
+            alt="Casque ORA éclaté"
+            className="absolute z-30 h-full w-full object-contain pointer-events-none"
+          />
+
+          {/* Boutons / CTA */}
           <motion.div
             style={{ opacity: buttonOpacity, pointerEvents: buttonPointer as any }}
-            className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-[#fafafa]/80 px-6 backdrop-blur-md"
+            className="absolute inset-0 z-40 flex flex-col items-center justify-center px-6"
           >
             <h2
-              className="mb-8 text-center text-5xl font-bold text-[#0f0f11] md:text-7xl"
-              style={{ fontFamily: displayFont }}
+              className="mb-8 text-center text-5xl font-bold text-white md:text-7xl"
+              style={{ fontFamily: displayFont, textShadow: "0 2px 12px rgba(0,0,0,0.25), 0 0 30px rgba(0,0,0,0.15)" }}
             >
               Prêt pour l&apos;immersion ?
             </h2>
             <Link
               to="/vr"
-              className="group relative overflow-hidden rounded-full bg-white px-10 py-5 text-lg font-semibold text-[#0f0f11] transition-all duration-300 hover:scale-105 md:text-xl"
+              className="group relative rounded-full border border-white/30 bg-white/20 px-10 py-5 text-lg font-semibold text-white backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:bg-white/30 md:text-xl"
             >
-              <div className="absolute inset-0 h-full w-full -translate-x-full bg-gradient-to-r from-transparent via-white/15 to-transparent group-hover:animate-[shimmer_1.5s_infinite]" />
+              <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-full">
+                <div className="absolute inset-0 h-full w-full bg-gradient-to-r from-transparent via-white/15 to-transparent animate-[shimmer_1.5s_infinite]" />
+              </div>
               Lancer l&apos;expérience VR
             </Link>
           </motion.div>

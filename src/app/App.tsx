@@ -84,7 +84,7 @@ export default function App() {
   };
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-gradient-to-br from-sky-300 via-blue-200 to-blue-100">
+    <div className="relative min-h-screen w-full overflow-hidden bg-[#fcfcfc]">
       <div className="mx-auto flex min-h-screen max-w-[1920px] items-center justify-center p-4">
         <div className="relative h-[min(100vh-32px,916px)] w-full max-w-[1628px]">
           <VrHudAframe
