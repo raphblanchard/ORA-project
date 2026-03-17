@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import VrHudAframe from "./components/VrHudAframe";
 import VideoPreloader from "./components/VideoPreloader";
 
-const VIDEO_URL = "https://github.com/raphblanchard/ORA-WIP/releases/download/v1.0-media/Test.VR.4K.mp4";
+const VIDEO_URL = "/api/video";
 
 type Page = "infos" | "ascension";
 

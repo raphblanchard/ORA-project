@@ -350,6 +350,7 @@ export default function VrHudAframe({
                         id="bg-video-af"
                         ref={videoRef}
                         src={videoSrc}
+                        crossOrigin="anonymous"
                         autoPlay
                         loop
                         muted
