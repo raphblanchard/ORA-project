@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import VrHudAframe from "./components/VrHudAframe";
+import VideoPreloader from "./components/VideoPreloader";
+
+const VIDEO_URL = "/media/video/Test VR 4K.mp4";
 
 type Page = "infos" | "ascension";
 
@@ -17,7 +20,6 @@ type ReferencePreset = {
   speed: string;
   timeText: string;
   title: string;
-  videoSrc: string;
   weatherMode: boolean;
 };
 
@@ -36,7 +38,6 @@ const PRESETS: Record<Page, ReferencePreset> = {
     maxSpeed: "71",
     speed: "56",
     timeText: "11:25",
-    videoSrc: "/media/old-hud-background.mp4",
     weatherMode: false,
   },
   ascension: {
@@ -53,28 +54,23 @@ const PRESETS: Record<Page, ReferencePreset> = {
     maxSpeed: "22",
     speed: "14",
     timeText: "18:10",
-    videoSrc: "/media/old-hud-background.mp4",
     weatherMode: true,
   },
 };
 
 export default function App() {
   const [page, setPage] = useState<Page>("infos");
+  // null = vidéo non encore préchargée / simulation non démarrée
+  const [videoSrc, setVideoSrc] = useState<string | null>(null);
 
   const preset = PRESETS[page];
   const isFirstReference = page === "infos";
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "ArrowRight") {
-        setPage("ascension");
-      }
-
-      if (event.key === "ArrowLeft") {
-        setPage("infos");
-      }
+      if (event.key === "ArrowRight") setPage("ascension");
+      if (event.key === "ArrowLeft") setPage("infos");
     };
-
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
@@ -82,6 +78,11 @@ export default function App() {
   const toggleReference = () => {
     setPage((currentPage) => (currentPage === "ascension" ? "infos" : "ascension"));
   };
+
+  // Écran de préchargement — affiché jusqu'à ce que l'utilisateur clique "Démarrer"
+  if (!videoSrc) {
+    return <VideoPreloader videoUrl={VIDEO_URL} onStart={setVideoSrc} />;
+  }
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-[#fcfcfc]">
@@ -97,7 +98,7 @@ export default function App() {
             timeText={preset.timeText}
             tempAmb={preset.ambText}
             tempObj={preset.corpText}
-            videoSrc={preset.videoSrc}
+            videoSrc={videoSrc}
           />
         </div>
       </div>

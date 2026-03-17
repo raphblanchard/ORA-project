@@ -51,13 +51,16 @@ export default function VrHudAframe({
     const breathInstruction = breathPhase === "inhale" ? "Inspirez lentement" : "Expirez";
 
     /* ── lecture vidéo ── */
+    /* Déclenché au mount ET si videoSrc change (ex : blob URL reçue après préchargement) */
     useEffect(() => {
         const v = videoRef.current;
         if (!v) return;
+        // S'assurer que le src est à jour avant de jouer
+        v.load();
         v.play()
             .then(() => setIsPlaying(true))
             .catch(() => setIsPlaying(false));
-    }, []);
+    }, [videoSrc]);
 
     /* ── mise à jour dynamique des <a-text> par setAttribute ── */
     useEffect(() => {
