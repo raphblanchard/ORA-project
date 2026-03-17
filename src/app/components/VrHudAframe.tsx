@@ -256,6 +256,23 @@ export default function VrHudAframe({
         };
     }, [onToggleReference]);
 
+    useEffect(() => {
+        const buttonEl = document.querySelector("#af-exit-vr-button");
+        if (!buttonEl) return;
+
+        const handleClick = () => {
+            const sceneEl = sceneRef.current;
+            if (sceneEl && typeof sceneEl.exitVR === "function") {
+                sceneEl.exitVR();
+            }
+        };
+
+        buttonEl.addEventListener("click", handleClick);
+        return () => {
+            buttonEl.removeEventListener("click", handleClick);
+        };
+    }, [isVrMode]);
+
     return (
         <div
             style={{
@@ -560,6 +577,26 @@ export default function VrHudAframe({
                                 position="0 0 0.01"
                             />
                         </a-entity>
+
+                        {/* ══════ BOUTON EXIT VR (visible uniquement en mode immersif) ══════ */}
+                        {isVrMode && (
+                            <a-entity
+                                id="af-exit-vr-button"
+                                class="af-clickable"
+                                geometry="primitive: plane; width: 0.34; height: 0.34"
+                                material="color: #10242c; opacity: 0.38; shader: flat"
+                                position="0.42 -0.98 0.02"
+                            >
+                                <a-text
+                                    value="✕"
+                                    color="#FF8A84"
+                                    align="center"
+                                    baseline="center"
+                                    width="1.5"
+                                    position="0 0 0.01"
+                                />
+                            </a-entity>
+                        )}
 
                         {activeAlert === "breathing" && (
                             <a-entity id="af-breathing-alert" position="0 -0.05 0.03">
