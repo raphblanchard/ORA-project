@@ -60,8 +60,7 @@ const PRESETS: Record<Page, ReferencePreset> = {
 
 export default function App() {
   const [page, setPage] = useState<Page>("infos");
-  // null = vidéo non encore préchargée / simulation non démarrée
-  const [videoSrc, setVideoSrc] = useState<string | null>(null);
+  const [videoReady, setVideoReady] = useState(false);
 
   const preset = PRESETS[page];
   const isFirstReference = page === "infos";
@@ -80,8 +79,8 @@ export default function App() {
   };
 
   // Écran de préchargement — affiché jusqu'à ce que l'utilisateur clique "Démarrer"
-  if (!videoSrc) {
-    return <VideoPreloader videoUrl={VIDEO_URL} onStart={setVideoSrc} />;
+  if (!videoReady) {
+    return <VideoPreloader videoUrl={VIDEO_URL} onStart={() => setVideoReady(true)} />;
   }
 
   return (
@@ -98,7 +97,6 @@ export default function App() {
             timeText={preset.timeText}
             tempAmb={preset.ambText}
             tempObj={preset.corpText}
-            videoSrc={videoSrc}
           />
         </div>
       </div>

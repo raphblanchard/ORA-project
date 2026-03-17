@@ -14,7 +14,6 @@ interface VrHudAframeProps {
     timeText: string;
     tempAmb: string;
     tempObj: string;
-    videoSrc: string;
 }
 
 /* ─────────────────────────────────────────────
@@ -32,7 +31,6 @@ export default function VrHudAframe({
     timeText,
     tempAmb,
     tempObj,
-    videoSrc,
 }: VrHudAframeProps) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const sceneRef = useRef<any>(null);
@@ -51,16 +49,15 @@ export default function VrHudAframe({
     const breathInstruction = breathPhase === "inhale" ? "Inspirez lentement" : "Expirez";
 
     /* ── lecture vidéo ── */
-    /* Déclenché au mount ET si videoSrc change (ex : blob URL reçue après préchargement) */
+    /* Retrouve le <video id="bg-video-af"> injecté par VideoPreloader et le joue */
     useEffect(() => {
-        const v = videoRef.current;
+        const v = document.getElementById("bg-video-af") as HTMLVideoElement | null;
         if (!v) return;
-        // S'assurer que le src est à jour avant de jouer
-        v.load();
+        videoRef.current = v;
         v.play()
             .then(() => setIsPlaying(true))
             .catch(() => setIsPlaying(false));
-    }, [videoSrc]);
+    }, []);
 
     /* ── mise à jour dynamique des <a-text> par setAttribute ── */
     useEffect(() => {
@@ -345,17 +342,8 @@ export default function VrHudAframe({
                 style={{ position: "absolute", inset: 0, zIndex: 1 }}
             >
                 {/* ── Assets ── */}
+                {/* <video id="bg-video-af"> est injecté par VideoPreloader — pas besoin de le re-déclarer */}
                 <a-assets>
-                    <video
-                        id="bg-video-af"
-                        ref={videoRef}
-                        src={videoSrc}
-                        crossOrigin="anonymous"
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
-                    />
                     <img id="af-img-logo" src="/media/hud/png-elements/hq/Logo%20vert.png" crossOrigin="anonymous" />
                     <img id="af-img-line-l" src="/media/hud/png-elements/hq/Line%20gauche.png" crossOrigin="anonymous" />
                     <img id="af-img-line-r" src="/media/hud/png-elements/hq/Line%20droite.png" crossOrigin="anonymous" />
