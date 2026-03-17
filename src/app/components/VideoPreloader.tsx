@@ -1,61 +1,74 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface VideoPreloaderProps {
     videoUrl: string;
-    onStart: (url: string) => void;
+    onStart: (blobUrl: string) => void;
 }
 
 const COL = "#6AD2CA";
 
 export default function VideoPreloader({ videoUrl, onStart }: VideoPreloaderProps) {
     const [progress, setProgress] = useState(0);
-    const [ready, setReady] = useState(false);
+    const [blobUrl, setBlobUrl] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const handedOff = useRef(false);
+    const objectUrlRef = useRef<string | null>(null);
 
     useEffect(() => {
-        // On utilise un <video> caché — pas de restriction CORS contrairement à fetch()
-        const video = document.createElement("video");
-        video.preload = "auto";
-        video.muted = true;
-        video.src = videoUrl;
+        let cancelled = false;
 
-        let rafId: number;
+        async function preload() {
+            try {
+                const response = await fetch(videoUrl);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-        // Mise à jour de la progression via video.buffered (polling rAF)
-        function tick() {
-            if (video.duration > 0 && video.buffered.length > 0) {
-                const bufferedEnd = video.buffered.end(video.buffered.length - 1);
-                const pct = Math.round((bufferedEnd / video.duration) * 100);
-                setProgress(Math.min(99, pct));
+                const contentLength = response.headers.get("Content-Length");
+                const total = contentLength ? parseInt(contentLength, 10) : 0;
+
+                const reader = response.body!.getReader();
+                const chunks: Uint8Array[] = [];
+                let received = 0;
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    if (cancelled) { reader.cancel(); return; }
+                    chunks.push(value);
+                    received += value.length;
+                    if (total > 0) {
+                        setProgress(Math.min(99, Math.round((received / total) * 100)));
+                    }
+                }
+
+                if (cancelled) return;
+
+                const blob = new Blob(chunks, { type: "video/mp4" });
+                const url = URL.createObjectURL(blob);
+                objectUrlRef.current = url;
+                setProgress(100);
+                setBlobUrl(url);
+            } catch (err) {
+                if (!cancelled) {
+                    setError(err instanceof Error ? err.message : "Erreur inconnue");
+                }
             }
-            rafId = requestAnimationFrame(tick);
         }
 
-        function onCanPlayThrough() {
-            cancelAnimationFrame(rafId);
-            setProgress(100);
-            setReady(true);
-        }
-
-        function onError() {
-            cancelAnimationFrame(rafId);
-            const err = video.error;
-            setError(err ? `Code ${err.code} — ${err.message}` : "Erreur inconnue");
-        }
-
-        video.addEventListener("canplaythrough", onCanPlayThrough, { once: true });
-        video.addEventListener("error", onError, { once: true });
-
-        rafId = requestAnimationFrame(tick);
-        video.load();
+        preload();
 
         return () => {
-            cancelAnimationFrame(rafId);
-            video.removeEventListener("canplaythrough", onCanPlayThrough);
-            video.removeEventListener("error", onError);
-            video.src = "";
+            cancelled = true;
+            if (!handedOff.current && objectUrlRef.current) {
+                URL.revokeObjectURL(objectUrlRef.current);
+            }
         };
     }, [videoUrl]);
+
+    function handleStart() {
+        if (!blobUrl) return;
+        handedOff.current = true;
+        onStart(blobUrl);
+    }
 
     return (
         <div
@@ -71,95 +84,45 @@ export default function VideoPreloader({ videoUrl, onStart }: VideoPreloaderProp
                 color: "#fff",
             }}
         >
-            {/* Logo ORA */}
             <img
                 src="/media/hud/png-elements/hq/Logo%20vert.png"
                 alt="ORA"
                 style={{ width: 72, height: 72, marginBottom: 28, opacity: 0.92 }}
-                onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = "none";
-                }}
+                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
             />
 
-            <div
-                style={{
-                    fontSize: 22,
-                    fontWeight: 700,
-                    letterSpacing: "0.18em",
-                    color: COL,
-                    marginBottom: 6,
-                }}
-            >
+            <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: "0.18em", color: COL, marginBottom: 6 }}>
                 ORA
             </div>
-            <div
-                style={{
-                    fontSize: 11,
-                    color: "rgba(255,255,255,0.4)",
-                    letterSpacing: "0.14em",
-                    textTransform: "uppercase",
-                    marginBottom: 52,
-                }}
-            >
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 52 }}>
                 Chargement de la simulation
             </div>
 
             {error ? (
-                <div
-                    style={{
-                        color: "#FF8A84",
-                        fontSize: 13,
-                        maxWidth: 320,
-                        textAlign: "center",
-                        lineHeight: 1.6,
-                        padding: "0 24px",
-                    }}
-                >
+                <div style={{ color: "#FF8A84", fontSize: 13, maxWidth: 320, textAlign: "center", lineHeight: 1.6, padding: "0 24px" }}>
                     Impossible de charger la vidéo :<br />
                     <span style={{ opacity: 0.7 }}>{error}</span>
                 </div>
             ) : (
                 <>
-                    {/* Barre de progression */}
-                    <div
-                        style={{
-                            width: 260,
-                            height: 2,
-                            background: "rgba(106,210,202,0.1)",
+                    <div style={{ width: 260, height: 2, background: "rgba(106,210,202,0.1)", borderRadius: 2, marginBottom: 14, overflow: "hidden" }}>
+                        <div style={{
+                            height: "100%",
+                            width: `${progress}%`,
+                            background: COL,
                             borderRadius: 2,
-                            marginBottom: 14,
-                            overflow: "hidden",
-                        }}
-                    >
-                        <div
-                            style={{
-                                height: "100%",
-                                width: `${progress}%`,
-                                background: COL,
-                                borderRadius: 2,
-                                transition: "width 0.3s linear",
-                                boxShadow: "0 0 6px rgba(106,210,202,0.5)",
-                            }}
-                        />
+                            transition: "width 0.15s linear",
+                            boxShadow: "0 0 6px rgba(106,210,202,0.5)",
+                        }} />
                     </div>
 
-                    {/* Pourcentage */}
-                    <div
-                        style={{
-                            fontSize: 12,
-                            color: "rgba(255,255,255,0.35)",
-                            letterSpacing: "0.1em",
-                            marginBottom: 48,
-                            minHeight: 18,
-                        }}
-                    >
+                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", letterSpacing: "0.1em", marginBottom: 48, minHeight: 18 }}>
                         {progress < 100 ? `${progress} %` : "Prêt"}
                     </div>
 
-                    {/* Bouton — visible uniquement quand le chargement est terminé */}
-                    {ready && (
+                    {blobUrl && (
                         <button
-                            onClick={() => onStart(videoUrl)}
+                            onClick={handleStart}
                             style={{
                                 padding: "14px 44px",
                                 borderRadius: 12,
