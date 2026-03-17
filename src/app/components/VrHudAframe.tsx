@@ -578,21 +578,22 @@ export default function VrHudAframe({
                             />
                         </a-entity>
 
-                        {/* ══════ BOUTON EXIT VR (visible uniquement en mode immersif) ══════ */}
+                        {/* ══════ BOUTON EXIT VR — haut gauche, visible en mode immersif ══════ */}
                         {isVrMode && (
                             <a-entity
                                 id="af-exit-vr-button"
                                 class="af-clickable"
-                                geometry="primitive: plane; width: 0.34; height: 0.34"
-                                material="color: #10242c; opacity: 0.38; shader: flat"
-                                position="0.42 -0.98 0.02"
+                                geometry="primitive: plane; width: 0.36; height: 0.20"
+                                material="color: #10242c; opacity: 0.5; shader: flat"
+                                position="-2.8 0.65 0.02"
                             >
                                 <a-text
-                                    value="✕"
+                                    value="X EXIT"
                                     color="#FF8A84"
                                     align="center"
                                     baseline="center"
-                                    width="1.5"
+                                    font="kelsonsans"
+                                    width="2.2"
                                     position="0 0 0.01"
                                 />
                             </a-entity>
