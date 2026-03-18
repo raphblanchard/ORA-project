@@ -171,11 +171,11 @@ export function Vector({ className, altitudeText = "1878" }: { className?: strin
             {altitudeText}
           </text>
           <text
-            x="145"
+            x="148"
             y="76"
             fill="white"
             fontFamily="Inter, Arial, sans-serif"
-            fontSize="46"
+            fontSize="36"
             fontWeight="800"
             stroke="#5F93AB"
             strokeWidth="1.4"

@@ -3,6 +3,7 @@ import {
   useRef,
   useMemo,
   useState,
+  type CSSProperties,
   type Dispatch,
   type SetStateAction,
   type MouseEvent as ReactMouseEvent,
@@ -10,6 +11,9 @@ import {
 } from "react";
 import { Link } from "react-router";
 import { Component, Vector, Component1, Component2, Component3, ComponentWeather } from "../../imports/Frame1-2-247";
+
+const displayFont = '"Outfit", ui-sans-serif, system-ui, sans-serif';
+const bodyFont = '"Inter", ui-sans-serif, system-ui, sans-serif';
 
 const SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
 const TX_CHAR = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
@@ -28,10 +32,38 @@ const haversineMeters = (lat1: number, lon1: number, lat2: number, lon2: number)
   return R * c;
 };
 
+const INTERFACE_PAGES: Page[] = ["infos", "ascension", "test"];
+
+const INTERFACE_LABELS: Record<Page, string> = {
+  home: "Preparation",
+  infos: "Descente",
+  ascension: "Ascension",
+  test: "Test",
+};
+
+const getNavButtonStyle = (active: boolean): CSSProperties => ({
+  backgroundColor: active ? "rgba(255, 90, 0, 0.68)" : "rgba(255, 90, 0, 0.16)",
+  borderColor: active ? "#ffd0b5" : "rgba(255, 180, 138, 0.72)",
+  color: "#ffffff",
+  boxShadow: active
+    ? "0 0 18px rgba(255, 90, 0, 0.24)"
+    : "0 0 14px rgba(255, 90, 0, 0.1)",
+  textShadow: "0 1px 8px rgba(0, 0, 0, 0.16)",
+});
+
+const secondaryActionStyle: CSSProperties = {
+  backgroundColor: "rgba(255, 90, 0, 0.16)",
+  borderColor: "rgba(255, 180, 138, 0.72)",
+  color: "#ffffff",
+  boxShadow: "0 0 14px rgba(255, 90, 0, 0.1)",
+  textShadow: "0 1px 8px rgba(0, 0, 0, 0.16)",
+};
+
 export default function PrototypePage() {
   const hudVideoSrc = "/media/hud-background.mp4";
-  const [page, setPage] = useState<Page>("infos");
+  const [page, setPage] = useState<Page>("home");
   const [btStatus, setBtStatus] = useState("BT: non connecte");
+  const [isBtConnecting, setIsBtConnecting] = useState(false);
   const [sessionActive, setSessionActive] = useState(false);
   const [testSessionActive, setTestSessionActive] = useState(false);
   const [bpm, setBpm] = useState<string>("0");
@@ -68,7 +100,7 @@ export default function PrototypePage() {
   const isAscensionPage = page === "ascension";
   const isTestPage = page === "test";
   const isWeatherPage = isAscensionPage || isTestPage;
-  const activeSession = isTestPage ? testSessionActive : sessionActive;
+  const activeSession = sessionActive;
   const altitudeDisplay = isTestPage ? String(testAltitude) : altitude;
   const tempAmbDisplay = isTestPage ? testTempAmb.toFixed(1) : tempAmb;
   const tempObjDisplay = isTestPage ? testTempObj.toFixed(1) : tempObj;
@@ -77,6 +109,10 @@ export default function PrototypePage() {
     ? `${String(testHour).padStart(2, "0")}:${String(testMinute).padStart(2, "0")}`
     : timeText;
   const batteryDisplay = isTestPage ? String(testBattery) : batteryText;
+  const navButtonClass =
+    "relative overflow-hidden rounded-xl border px-6 py-3 text-[0.72rem] font-semibold uppercase tracking-[0.24em] backdrop-blur-md transition-all duration-300 hover:brightness-105";
+  const isBtActive = isBtConnecting || btStatus.startsWith("BT: connecte");
+  const isHomeModalActive = homeModalOpen || homeStatus.startsWith("Maison: definie");
 
   const mapSrc = useMemo(() => {
     const d = 0.08;
@@ -183,22 +219,45 @@ export default function PrototypePage() {
   };
 
   const startDisplaySession = () => {
-    if (isTestPage) {
+    const targetPage = page === "home" ? "infos" : page;
+    setPage(targetPage);
+    setTestSessionActive(false);
+
+    if (targetPage === "test") {
+      resetSessionMetrics();
       setTestAltitude(3000);
       setTestHour(17);
       setTestMinute(0);
-      setTestSessionActive(true);
+      setSessionActive(true);
       return;
     }
+
     startSession();
   };
 
   const stopDisplaySession = () => {
-    if (isTestPage) {
-      setTestSessionActive(false);
+    setTestSessionActive(false);
+    stopSession();
+    setPage("home");
+  };
+
+  const cycleInterface = () => {
+    if (!activeSession) return;
+
+    setPage((currentPage) => {
+      const currentIndex = INTERFACE_PAGES.indexOf(currentPage as (typeof INTERFACE_PAGES)[number]);
+      const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % INTERFACE_PAGES.length;
+      return INTERFACE_PAGES[nextIndex];
+    });
+  };
+
+  const handleMenuSessionToggle = () => {
+    if (activeSession) {
+      stopDisplaySession();
       return;
     }
-    stopSession();
+
+    startDisplaySession();
   };
 
   const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
@@ -296,6 +355,7 @@ export default function PrototypePage() {
     "absolute z-50 -translate-x-1/2 -translate-y-1/2 flex h-14 w-8 flex-col items-center justify-between";
 
   const connectBLE = async () => {
+    setIsBtConnecting(true);
     try {
       const device = await navigator.bluetooth.requestDevice({
         filters: [{ namePrefix: "ESP32_BPM_BLE" }],
@@ -339,6 +399,8 @@ export default function PrototypePage() {
       setBtStatus(`BT: connecte (${device.name || "ESP32"})`);
     } catch {
       setBtStatus("BT: erreur de connexion");
+    } finally {
+      setIsBtConnecting(false);
     }
   };
 
@@ -503,286 +565,352 @@ export default function PrototypePage() {
   }, []);
 
   return (
-    <div className="relative w-full min-h-screen overflow-hidden bg-gradient-to-br from-sky-300 via-blue-200 to-blue-100">
-      <div className="pointer-events-none fixed inset-x-0 top-4 z-[100] flex justify-center px-4">
-        <div className="pointer-events-auto flex items-center rounded-full border border-white/50 bg-white/85 px-4 py-2 shadow-lg backdrop-blur">
-          <Link to="/" className="text-sm font-semibold text-slate-900 transition-opacity hover:opacity-70">
-            Retour accueil
-          </Link>
-        </div>
-      </div>
-      <div className="max-w-[1920px] mx-auto p-4">
-        <div className="flex gap-2 mb-3">
+    <div
+      className="relative w-full min-h-screen overflow-hidden text-[#0f0f11] selection:bg-[#ff5a00]/20"
+      style={{
+        fontFamily: bodyFont,
+        background: activeSession
+          ? "#fcfcfc"
+          : "radial-gradient(circle at top left, rgba(255,90,0,0.26) 0%, rgba(255,90,0,0.14) 18%, rgba(255,242,234,0.88) 38%, #fcfcfc 72%)",
+      }}
+    >
+      <div className="pointer-events-none fixed inset-x-0 top-4 z-[100] flex justify-start px-4">
+        <div className="pointer-events-auto flex items-center gap-3 rounded-xl border border-white/50 bg-white/85 px-4 py-2 shadow-lg backdrop-blur">
           <button
             onClick={() => setPage("home")}
-            className={`px-4 py-2 rounded-md border ${page === "home" ? "bg-slate-900 text-white" : "bg-white"}`}
+            className={navButtonClass}
+            style={getNavButtonStyle(page === "home" && !activeSession)}
           >
             Home
           </button>
           <button
-            onClick={() => setPage("infos")}
-            className={`px-4 py-2 rounded-md border ${page === "infos" ? "bg-slate-900 text-white" : "bg-white"}`}
+            onClick={handleMenuSessionToggle}
+            className={navButtonClass}
+            style={getNavButtonStyle(activeSession)}
           >
-            Descente
-          </button>
-          <button
-            onClick={() => setPage("ascension")}
-            className={`px-4 py-2 rounded-md border ${page === "ascension" ? "bg-slate-900 text-white" : "bg-white"}`}
-          >
-            Ascension
-          </button>
-          <button
-            onClick={() => setPage("test")}
-            className={`px-4 py-2 rounded-md border ${page === "test" ? "bg-slate-900 text-white" : "bg-white"}`}
-          >
-            Test
+            {activeSession ? "Stop Session" : "Start Session"}
           </button>
         </div>
-
+        <div className="pointer-events-auto absolute right-4 top-0">
+          <Link
+            to="/"
+            className="flex items-center rounded-full border border-white/50 bg-white/85 px-4 py-2 text-sm font-semibold text-slate-900 shadow-lg backdrop-blur transition-opacity hover:opacity-70"
+          >
+            Retour accueil
+          </Link>
+        </div>
+      </div>
+      <div className={activeSession ? "w-full" : "mx-auto max-w-[1920px] p-4"}>
         {page === "home" && (
-          <div className="bg-white rounded-xl p-4 border max-w-xl">
-            <h2 className="text-xl font-semibold mb-3">Preparation</h2>
-            <div className="flex flex-wrap gap-2 mb-3">
-              <button onClick={connectBLE} className="px-4 py-2 rounded-md border bg-white">
-                Connecter en BT
-              </button>
-              <button onClick={() => setHomeModalOpen(true)} className="px-4 py-2 rounded-md border bg-white">
-                Definir maison
-              </button>
+          <div className="pointer-events-none fixed inset-0 flex items-center justify-center px-4">
+            <div className="pointer-events-auto w-full max-w-xl rounded-xl border border-black/70 bg-white/18 p-6 shadow-[0_12px_30px_rgba(15,15,17,0.06)] backdrop-blur-md">
+              <h2 className="mb-3 text-xl font-semibold" style={{ fontFamily: displayFont }}>
+                Preparation
+              </h2>
+              <div className="mb-3 flex flex-wrap gap-2">
+                <button
+                  onClick={connectBLE}
+                  className="rounded-xl border px-4 py-2 text-sm font-semibold uppercase tracking-[0.18em] backdrop-blur-md transition-all duration-300 hover:brightness-105"
+                  style={getNavButtonStyle(isBtActive)}
+                >
+                  Connecter en BT
+                </button>
+                <button
+                  onClick={() => setHomeModalOpen(true)}
+                  className="rounded-xl border px-4 py-2 text-sm font-semibold uppercase tracking-[0.18em] backdrop-blur-md transition-all duration-300 hover:brightness-105"
+                  style={getNavButtonStyle(isHomeModalActive)}
+                >
+                  Definir maison
+                </button>
+              </div>
+              <div className="mb-1 text-sm">{btStatus}</div>
+              <div className="text-sm">{homeStatus}</div>
             </div>
-            <div className="text-sm mb-1">{btStatus}</div>
-            <div className="text-sm">{homeStatus}</div>
           </div>
         )}
 
         {(page === "infos" || page === "ascension" || page === "test") && (
-          <div className="relative w-full h-[calc(100vh-88px)] max-w-[1920px]">
-            <div className="absolute inset-0 m-auto aspect-[1628/916] w-full h-auto max-h-full">
-            {activeSession && (
-              <video
-                className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-                autoPlay
-                muted
-                loop
-                playsInline
-                preload="auto"
-              >
-                <source src={hudVideoSrc} type="video/mp4" />
-              </video>
-            )}
-            <div className="absolute" style={{ left: "2.92%", top: "5.97%" }}>
-              <Component className="!static !w-[169px] !h-[169px]" mapSrc={hudMapSrc} />
-            </div>
-            <div className="absolute z-50" style={{ right: "0%", top: "0px" }}>
-              <Component3 className="!static !w-[298px] !h-[94px]" timeText={timeDisplay} batteryText={batteryDisplay} />
-            </div>
-              <div className="absolute" style={{ left: "0.08%", top: "80.2%" }}>
-                <Vector className="!static !w-[430px] !h-[191px]" altitudeText={altitudeDisplay} />
-              </div>
-              <div className="absolute" style={{ left: "37.32%", top: "80.2%" }}>
-                {isWeatherPage ? (
-                  <ComponentWeather className="!static !w-[412px] !h-[191px]" ambText={tempAmbDisplay} corpText={tempObjDisplay} />
-                ) : (
-                  <Component1
-                    className="!static !w-[412px] !h-[191px]"
-                    speedText={speed}
-                    maxSpeedText={String(maxSpeed)}
-                    avgSpeedText={String(avgSpeed)}
-                  />
-                )}
-              </div>
-              <div className="absolute" style={{ left: "73.49%", top: "80.2%" }}>
-                <Component2 className="!static !w-[430px] !h-[191px]" bpmText={bpmDisplay} />
-              </div>
-            {!activeSession && (
-              <div className="absolute inset-0 z-40 flex items-center justify-center">
-                <button
-                  onClick={startDisplaySession}
-                  className="px-8 py-4 rounded-xl border-2 border-white/70 bg-[#5F93AB]/70 text-white text-2xl font-extrabold backdrop-blur-sm"
-                >
-                  Start Session
-                </button>
-              </div>
-            )}
-            {activeSession && (
-              <button
-                onClick={stopDisplaySession}
-                className="absolute z-50 right-3 top-28 px-3 py-1.5 rounded-md border border-white/70 bg-black/35 text-white text-xs font-semibold"
-              >
-                Stop
-              </button>
-            )}
-            {isTestPage && (
+          <div className={activeSession ? "fixed inset-0 bg-white" : "relative h-[calc(100vh-88px)] w-full max-w-[1920px] rounded-[32px] bg-white"}>
+            {activeSession ? (
               <>
-                <div className={controlPairClass} style={{ left: "20.5%", top: "92.4%" }}>
-                  <button
-                    onMouseDown={(e) => onRepeatMouseDown(e, () => bumpInt(setTestAltitude, 10, -500, 9000))}
-                    onMouseUp={clearHoldTimers}
-                    onMouseLeave={clearHoldTimers}
-                    onTouchStart={(e) => onRepeatTouchStart(e, () => bumpInt(setTestAltitude, 10, -500, 9000))}
-                    onTouchEnd={clearHoldTimers}
-                    onTouchCancel={clearHoldTimers}
-                    onClick={(e) => onRepeatClick(e, () => bumpInt(setTestAltitude, 10, -500, 9000))}
-                    className={controlBtnClass}
-                  >
-                    ▲
-                  </button>
-                  <button
-                    onMouseDown={(e) => onRepeatMouseDown(e, () => bumpInt(setTestAltitude, -10, -500, 9000))}
-                    onMouseUp={clearHoldTimers}
-                    onMouseLeave={clearHoldTimers}
-                    onTouchStart={(e) => onRepeatTouchStart(e, () => bumpInt(setTestAltitude, -10, -500, 9000))}
-                    onTouchEnd={clearHoldTimers}
-                    onTouchCancel={clearHoldTimers}
-                    onClick={(e) => onRepeatClick(e, () => bumpInt(setTestAltitude, -10, -500, 9000))}
-                    className={controlBtnClass}
-                  >
-                    ▼
-                  </button>
-                </div>
+                <video
+                  className="absolute inset-0 h-full w-full object-cover pointer-events-none"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  preload="auto"
+                >
+                  <source src={hudVideoSrc} type="video/mp4" />
+                </video>
 
-                <div className={controlPairClass} style={{ left: "46.8%", top: "95%" }}>
-                  <button
-                    onMouseDown={(e) => onRepeatMouseDown(e, () => bumpFloat(setTestTempAmb, 0.5, -40, 60, 1))}
-                    onMouseUp={clearHoldTimers}
-                    onMouseLeave={clearHoldTimers}
-                    onTouchStart={(e) => onRepeatTouchStart(e, () => bumpFloat(setTestTempAmb, 0.5, -40, 60, 1))}
-                    onTouchEnd={clearHoldTimers}
-                    onTouchCancel={clearHoldTimers}
-                    onClick={(e) => onRepeatClick(e, () => bumpFloat(setTestTempAmb, 0.5, -40, 60, 1))}
-                    className={controlBtnClass}
-                  >
-                    ▲
-                  </button>
-                  <button
-                    onMouseDown={(e) => onRepeatMouseDown(e, () => bumpFloat(setTestTempAmb, -0.5, -40, 60, 1))}
-                    onMouseUp={clearHoldTimers}
-                    onMouseLeave={clearHoldTimers}
-                    onTouchStart={(e) => onRepeatTouchStart(e, () => bumpFloat(setTestTempAmb, -0.5, -40, 60, 1))}
-                    onTouchEnd={clearHoldTimers}
-                    onTouchCancel={clearHoldTimers}
-                    onClick={(e) => onRepeatClick(e, () => bumpFloat(setTestTempAmb, -0.5, -40, 60, 1))}
-                    className={controlBtnClass}
-                  >
-                    ▼
-                  </button>
-                </div>
-                <div className={controlPairClass} style={{ left: "52.1%", top: "95%" }}>
-                  <button
-                    onMouseDown={(e) => onRepeatMouseDown(e, () => bumpFloat(setTestTempObj, 0.1, 20, 45, 1))}
-                    onMouseUp={clearHoldTimers}
-                    onMouseLeave={clearHoldTimers}
-                    onTouchStart={(e) => onRepeatTouchStart(e, () => bumpFloat(setTestTempObj, 0.1, 20, 45, 1))}
-                    onTouchEnd={clearHoldTimers}
-                    onTouchCancel={clearHoldTimers}
-                    onClick={(e) => onRepeatClick(e, () => bumpFloat(setTestTempObj, 0.1, 20, 45, 1))}
-                    className={controlBtnClass}
-                  >
-                    ▲
-                  </button>
-                  <button
-                    onMouseDown={(e) => onRepeatMouseDown(e, () => bumpFloat(setTestTempObj, -0.1, 20, 45, 1))}
-                    onMouseUp={clearHoldTimers}
-                    onMouseLeave={clearHoldTimers}
-                    onTouchStart={(e) => onRepeatTouchStart(e, () => bumpFloat(setTestTempObj, -0.1, 20, 45, 1))}
-                    onTouchEnd={clearHoldTimers}
-                    onTouchCancel={clearHoldTimers}
-                    onClick={(e) => onRepeatClick(e, () => bumpFloat(setTestTempObj, -0.1, 20, 45, 1))}
-                    className={controlBtnClass}
-                  >
-                    ▼
-                  </button>
-                </div>
+                <div className="absolute inset-0 m-auto aspect-[1628/916] h-auto w-full max-h-full">
+                  <div className="absolute" style={{ left: "2.92%", top: "5.97%" }}>
+                    <Component className="!static !w-[169px] !h-[169px]" mapSrc={hudMapSrc} />
+                  </div>
+                  <div className="absolute z-50" style={{ right: "0%", top: "0px" }}>
+                    <Component3 className="!static !w-[298px] !h-[94px]" timeText={timeDisplay} batteryText={batteryDisplay} />
+                  </div>
+                  <div className="absolute" style={{ left: "0.08%", bottom: "-2.2%" }}>
+                    <Vector className="!static !w-[430px] !h-[191px]" altitudeText={altitudeDisplay} />
+                  </div>
+                  <div className="absolute" style={{ left: "37.32%", bottom: "-2.2%" }}>
+                    {isWeatherPage ? (
+                      <ComponentWeather className="!static !w-[412px] !h-[191px]" ambText={tempAmbDisplay} corpText={tempObjDisplay} />
+                    ) : (
+                      <Component1
+                        className="!static !w-[412px] !h-[191px]"
+                        speedText={speed}
+                        maxSpeedText={String(maxSpeed)}
+                        avgSpeedText={String(avgSpeed)}
+                      />
+                    )}
+                  </div>
+                  <div className="absolute" style={{ right: "0%", bottom: "-2.2%" }}>
+                    <Component2 className="!static !w-[430px] !h-[191px]" bpmText={bpmDisplay} />
+                  </div>
 
-                <div className={controlPairClass} style={{ left: "88.8%", top: "92.4%" }}>
-                  <button
-                    onMouseDown={(e) => onRepeatMouseDown(e, () => bumpInt(setTestBpm, 1, 30, 220))}
-                    onMouseUp={clearHoldTimers}
-                    onMouseLeave={clearHoldTimers}
-                    onTouchStart={(e) => onRepeatTouchStart(e, () => bumpInt(setTestBpm, 1, 30, 220))}
-                    onTouchEnd={clearHoldTimers}
-                    onTouchCancel={clearHoldTimers}
-                    onClick={(e) => onRepeatClick(e, () => bumpInt(setTestBpm, 1, 30, 220))}
-                    className={controlBtnClass}
-                  >
-                    ▲
-                  </button>
-                  <button
-                    onMouseDown={(e) => onRepeatMouseDown(e, () => bumpInt(setTestBpm, -1, 30, 220))}
-                    onMouseUp={clearHoldTimers}
-                    onMouseLeave={clearHoldTimers}
-                    onTouchStart={(e) => onRepeatTouchStart(e, () => bumpInt(setTestBpm, -1, 30, 220))}
-                    onTouchEnd={clearHoldTimers}
-                    onTouchCancel={clearHoldTimers}
-                    onClick={(e) => onRepeatClick(e, () => bumpInt(setTestBpm, -1, 30, 220))}
-                    className={controlBtnClass}
-                  >
-                    ▼
-                  </button>
-                </div>
+                  {isTestPage && (
+                    <>
+                      <div className={controlPairClass} style={{ left: "20.5%", top: "92.4%" }}>
+                        <button
+                          onMouseDown={(e) => onRepeatMouseDown(e, () => bumpInt(setTestAltitude, 10, -500, 9000))}
+                          onMouseUp={clearHoldTimers}
+                          onMouseLeave={clearHoldTimers}
+                          onTouchStart={(e) => onRepeatTouchStart(e, () => bumpInt(setTestAltitude, 10, -500, 9000))}
+                          onTouchEnd={clearHoldTimers}
+                          onTouchCancel={clearHoldTimers}
+                          onClick={(e) => onRepeatClick(e, () => bumpInt(setTestAltitude, 10, -500, 9000))}
+                          className={controlBtnClass}
+                        >
+                          ▲
+                        </button>
+                        <button
+                          onMouseDown={(e) => onRepeatMouseDown(e, () => bumpInt(setTestAltitude, -10, -500, 9000))}
+                          onMouseUp={clearHoldTimers}
+                          onMouseLeave={clearHoldTimers}
+                          onTouchStart={(e) => onRepeatTouchStart(e, () => bumpInt(setTestAltitude, -10, -500, 9000))}
+                          onTouchEnd={clearHoldTimers}
+                          onTouchCancel={clearHoldTimers}
+                          onClick={(e) => onRepeatClick(e, () => bumpInt(setTestAltitude, -10, -500, 9000))}
+                          className={controlBtnClass}
+                        >
+                          ▼
+                        </button>
+                      </div>
 
-                <div className={controlPairClass} style={{ left: "81.8%", top: "4.0%" }}>
-                  <button
-                    onMouseDown={(e) => onRepeatMouseDown(e, () => bumpTestTime(1))}
-                    onMouseUp={clearHoldTimers}
-                    onMouseLeave={clearHoldTimers}
-                    onTouchStart={(e) => onRepeatTouchStart(e, () => bumpTestTime(1))}
-                    onTouchEnd={clearHoldTimers}
-                    onTouchCancel={clearHoldTimers}
-                    onClick={(e) => onRepeatClick(e, () => bumpTestTime(1))}
-                    className={controlBtnClass}
-                  >
-                    ▲
-                  </button>
-                  <button
-                    onMouseDown={(e) => onRepeatMouseDown(e, () => bumpTestTime(-1))}
-                    onMouseUp={clearHoldTimers}
-                    onMouseLeave={clearHoldTimers}
-                    onTouchStart={(e) => onRepeatTouchStart(e, () => bumpTestTime(-1))}
-                    onTouchEnd={clearHoldTimers}
-                    onTouchCancel={clearHoldTimers}
-                    onClick={(e) => onRepeatClick(e, () => bumpTestTime(-1))}
-                    className={controlBtnClass}
-                  >
-                    ▼
-                  </button>
+                      <div className={controlPairClass} style={{ left: "46.8%", top: "95%" }}>
+                        <button
+                          onMouseDown={(e) => onRepeatMouseDown(e, () => bumpFloat(setTestTempAmb, 0.5, -40, 60, 1))}
+                          onMouseUp={clearHoldTimers}
+                          onMouseLeave={clearHoldTimers}
+                          onTouchStart={(e) => onRepeatTouchStart(e, () => bumpFloat(setTestTempAmb, 0.5, -40, 60, 1))}
+                          onTouchEnd={clearHoldTimers}
+                          onTouchCancel={clearHoldTimers}
+                          onClick={(e) => onRepeatClick(e, () => bumpFloat(setTestTempAmb, 0.5, -40, 60, 1))}
+                          className={controlBtnClass}
+                        >
+                          ▲
+                        </button>
+                        <button
+                          onMouseDown={(e) => onRepeatMouseDown(e, () => bumpFloat(setTestTempAmb, -0.5, -40, 60, 1))}
+                          onMouseUp={clearHoldTimers}
+                          onMouseLeave={clearHoldTimers}
+                          onTouchStart={(e) => onRepeatTouchStart(e, () => bumpFloat(setTestTempAmb, -0.5, -40, 60, 1))}
+                          onTouchEnd={clearHoldTimers}
+                          onTouchCancel={clearHoldTimers}
+                          onClick={(e) => onRepeatClick(e, () => bumpFloat(setTestTempAmb, -0.5, -40, 60, 1))}
+                          className={controlBtnClass}
+                        >
+                          ▼
+                        </button>
+                      </div>
+
+                      <div className={controlPairClass} style={{ left: "52.1%", top: "95%" }}>
+                        <button
+                          onMouseDown={(e) => onRepeatMouseDown(e, () => bumpFloat(setTestTempObj, 0.1, 20, 45, 1))}
+                          onMouseUp={clearHoldTimers}
+                          onMouseLeave={clearHoldTimers}
+                          onTouchStart={(e) => onRepeatTouchStart(e, () => bumpFloat(setTestTempObj, 0.1, 20, 45, 1))}
+                          onTouchEnd={clearHoldTimers}
+                          onTouchCancel={clearHoldTimers}
+                          onClick={(e) => onRepeatClick(e, () => bumpFloat(setTestTempObj, 0.1, 20, 45, 1))}
+                          className={controlBtnClass}
+                        >
+                          ▲
+                        </button>
+                        <button
+                          onMouseDown={(e) => onRepeatMouseDown(e, () => bumpFloat(setTestTempObj, -0.1, 20, 45, 1))}
+                          onMouseUp={clearHoldTimers}
+                          onMouseLeave={clearHoldTimers}
+                          onTouchStart={(e) => onRepeatTouchStart(e, () => bumpFloat(setTestTempObj, -0.1, 20, 45, 1))}
+                          onTouchEnd={clearHoldTimers}
+                          onTouchCancel={clearHoldTimers}
+                          onClick={(e) => onRepeatClick(e, () => bumpFloat(setTestTempObj, -0.1, 20, 45, 1))}
+                          className={controlBtnClass}
+                        >
+                          ▼
+                        </button>
+                      </div>
+
+                      <div className={controlPairClass} style={{ left: "88.8%", top: "92.4%" }}>
+                        <button
+                          onMouseDown={(e) => onRepeatMouseDown(e, () => bumpInt(setTestBpm, 1, 30, 220))}
+                          onMouseUp={clearHoldTimers}
+                          onMouseLeave={clearHoldTimers}
+                          onTouchStart={(e) => onRepeatTouchStart(e, () => bumpInt(setTestBpm, 1, 30, 220))}
+                          onTouchEnd={clearHoldTimers}
+                          onTouchCancel={clearHoldTimers}
+                          onClick={(e) => onRepeatClick(e, () => bumpInt(setTestBpm, 1, 30, 220))}
+                          className={controlBtnClass}
+                        >
+                          ▲
+                        </button>
+                        <button
+                          onMouseDown={(e) => onRepeatMouseDown(e, () => bumpInt(setTestBpm, -1, 30, 220))}
+                          onMouseUp={clearHoldTimers}
+                          onMouseLeave={clearHoldTimers}
+                          onTouchStart={(e) => onRepeatTouchStart(e, () => bumpInt(setTestBpm, -1, 30, 220))}
+                          onTouchEnd={clearHoldTimers}
+                          onTouchCancel={clearHoldTimers}
+                          onClick={(e) => onRepeatClick(e, () => bumpInt(setTestBpm, -1, 30, 220))}
+                          className={controlBtnClass}
+                        >
+                          ▼
+                        </button>
+                      </div>
+
+                      <div className={controlPairClass} style={{ left: "81.8%", top: "4.0%" }}>
+                        <button
+                          onMouseDown={(e) => onRepeatMouseDown(e, () => bumpTestTime(1))}
+                          onMouseUp={clearHoldTimers}
+                          onMouseLeave={clearHoldTimers}
+                          onTouchStart={(e) => onRepeatTouchStart(e, () => bumpTestTime(1))}
+                          onTouchEnd={clearHoldTimers}
+                          onTouchCancel={clearHoldTimers}
+                          onClick={(e) => onRepeatClick(e, () => bumpTestTime(1))}
+                          className={controlBtnClass}
+                        >
+                          ▲
+                        </button>
+                        <button
+                          onMouseDown={(e) => onRepeatMouseDown(e, () => bumpTestTime(-1))}
+                          onMouseUp={clearHoldTimers}
+                          onMouseLeave={clearHoldTimers}
+                          onTouchStart={(e) => onRepeatTouchStart(e, () => bumpTestTime(-1))}
+                          onTouchEnd={clearHoldTimers}
+                          onTouchCancel={clearHoldTimers}
+                          onClick={(e) => onRepeatClick(e, () => bumpTestTime(-1))}
+                          className={controlBtnClass}
+                        >
+                          ▼
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               </>
+            ) : (
+              <div className="absolute inset-0 m-auto aspect-[1628/916] h-auto w-full max-h-full rounded-[28px] bg-white shadow-[0_24px_80px_rgba(15,15,17,0.14),0_8px_28px_rgba(15,15,17,0.08)]">
+                <div className="absolute inset-0 z-40 flex items-center justify-center">
+                  <button
+                    onClick={startDisplaySession}
+                    className="rounded-xl border-2 border-white/70 bg-[#5F93AB]/70 px-8 py-4 text-2xl font-extrabold text-white backdrop-blur-sm"
+                  >
+                    Start Session
+                  </button>
+                </div>
+              </div>
             )}
-            </div>
           </div>
         )}
       </div>
+      {activeSession && page !== "home" && (
+        <div
+          className="fixed z-[220] flex flex-col items-center gap-4 pointer-events-auto overflow-visible"
+          style={{ top: "50%", right: "96px", left: "auto", transform: "translateY(-50%)" }}
+        >
+          <button
+            onClick={stopDisplaySession}
+            className="rounded-md border border-white/70 bg-black/35 px-3 py-1.5 text-xs font-semibold text-white"
+          >
+            Stop
+          </button>
+          <div
+            className="flex items-center justify-center overflow-visible rounded-full bg-transparent"
+            style={{
+              width: "142px",
+              height: "142px",
+              minWidth: "142px",
+              minHeight: "142px",
+              border: "6px solid rgba(255,90,0,0.95)",
+              boxShadow: "0 0 0 2px rgba(255,255,255,0.16), 0 18px 40px rgba(255,90,0,0.22)",
+              background:
+                "radial-gradient(circle at center, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 62%, rgba(255,90,0,0.12) 100%)",
+            }}
+          >
+            <button
+              onClick={cycleInterface}
+              className="group relative flex items-center justify-center rounded-full transition-transform duration-200 hover:scale-[1.03] active:scale-95"
+              style={{
+                width: "126px",
+                height: "126px",
+                minWidth: "126px",
+                minHeight: "126px",
+                background:
+                  "linear-gradient(180deg, rgba(255,255,255,0.94) 0%, rgba(255,246,240,0.82) 100%)",
+                border: "1px solid rgba(255,255,255,0.78)",
+                boxShadow:
+                  "inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -10px 24px rgba(255,90,0,0.08), 0 10px 24px rgba(15,15,17,0.14)",
+              }}
+              aria-label="Changer d'interface"
+            >
+              <span
+                className="pointer-events-none absolute inset-[10px] rounded-full"
+                style={{ border: "1px solid rgba(255,90,0,0.18)" }}
+              />
+              <span
+                className="relative text-[14px] font-extrabold uppercase tracking-[0.24em]"
+                style={{ color: "#ff5a00", textShadow: "0 1px 0 rgba(255,255,255,0.65)" }}
+              >
+                Push
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {homeModalOpen && (
-        <div className="fixed inset-0 bg-black/40 z-50 p-4 flex items-center justify-center">
-          <div className="w-full max-w-3xl bg-white rounded-xl border p-4 max-h-[90vh] overflow-auto">
-            <div className="flex items-center gap-2 mb-2">
-              <button onClick={() => setHomeModalOpen(false)} className="w-10 h-10 rounded-full border bg-white">
+        <div className="fixed inset-0 z-[260] flex items-center justify-center bg-black/32 px-4 py-10 backdrop-blur-[2px]">
+          <div className="w-full max-w-4xl overflow-auto rounded-2xl border border-black/70 bg-white/96 p-5 shadow-[0_24px_80px_rgba(15,15,17,0.18)]">
+            <div className="mb-4 flex items-center gap-3">
+              <button onClick={() => setHomeModalOpen(false)} className="flex h-10 w-10 items-center justify-center rounded-full border bg-white">
                 ←
               </button>
-              <h3 className="text-lg font-semibold">Definir maison</h3>
+              <h3 className="text-lg font-semibold" style={{ fontFamily: displayFont }}>
+                Definir maison
+              </h3>
             </div>
-            <div className="flex flex-wrap gap-2 mb-2">
-              <button onClick={defineHomeCurrent} className="px-4 py-2 rounded-md border bg-white">
+            <div className="mb-3 flex flex-wrap gap-2">
+              <button onClick={defineHomeCurrent} className="rounded-xl border bg-white px-4 py-2">
                 Maison = ma position
               </button>
-              <button onClick={centerOnMe} className="px-4 py-2 rounded-md border bg-white">
+              <button onClick={centerOnMe} className="rounded-xl border bg-white px-4 py-2">
                 Centrer carte sur moi
               </button>
             </div>
-            <div className="flex gap-2 mb-2">
+            <div className="mb-3 flex gap-2">
               <input
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                className="flex-1 border rounded-md px-3 py-2"
+                className="flex-1 rounded-xl border px-3 py-2"
                 placeholder="Entrer une adresse"
               />
-              <button onClick={defineHomeAddress} className="px-4 py-2 rounded-md border bg-white">
+              <button onClick={defineHomeAddress} className="rounded-xl border bg-white px-4 py-2">
                 Valider adresse
               </button>
             </div>
-            <iframe title="map" src={mapSrc} className="h-[320px] w-full border rounded-xl" />
+            <iframe title="map" src={mapSrc} className="h-[360px] w-full rounded-2xl border" />
             {homePos && (
               <div className="text-xs text-slate-600 mt-2">
                 Maison: {homePos.lat.toFixed(5)}, {homePos.lon.toFixed(5)}
