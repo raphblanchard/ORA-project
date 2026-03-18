@@ -3,7 +3,7 @@ import VrHudAframe from "./components/VrHudAframe";
 import VideoPreloader from "./components/VideoPreloader";
 
 /* Scène 1 (descente) : vidéo ski — servie statiquement */
-const VIDEO_DESCENTE_URL = "/media/video/Ski jump.mp4";
+const VIDEO_DESCENTE_URL = "/media/video/Ski HD.mp4";
 /* Scène 2 (ascension) : vidéo montagne 360° */
 const VIDEO_ASCENSION_URL = import.meta.env.DEV
   ? "/media/old-hud-background.mp4"
