@@ -119,7 +119,7 @@ export default function App() {
           }
           return next;
         });
-      }, 1500);
+      }, 450);
       return () => clearInterval(iv);
     }
   }, [page, simKey]);
