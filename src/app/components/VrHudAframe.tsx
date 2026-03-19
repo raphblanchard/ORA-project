@@ -32,6 +32,8 @@ export default function VrHudAframe({
     tempAmb,
     tempObj,
 }: VrHudAframeProps) {
+    const DESCENTE_VIDEO_YAW = -180;
+    const ASCENSION_VIDEO_YAW = -45;
     const videoRef = useRef<HTMLVideoElement>(null);
     const sceneRef = useRef<any>(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -486,8 +488,8 @@ export default function VrHudAframe({
                 </a-assets>
 
                 {/* ── Vidéos 360° — une par scène ── */}
-                <a-videosphere id="af-vs-descente"  src="#bg-video-af"        rotation="0 -90 0" />
-                <a-videosphere id="af-vs-ascension" src="#bg-video-ascension"  rotation="0 -90 0" visible="false" />
+                <a-videosphere id="af-vs-descente"  src="#bg-video-af"        rotation={`0 ${DESCENTE_VIDEO_YAW} 0`} />
+                <a-videosphere id="af-vs-ascension" src="#bg-video-ascension"  rotation={`0 ${ASCENSION_VIDEO_YAW} 0`} visible="false" />
 
                 {/* ── Caméra + HUD enfant ── */}
                 <a-entity id="af-camera-rig" rotation={`0 ${INITIAL_CAMERA_YAW} 0`}>
